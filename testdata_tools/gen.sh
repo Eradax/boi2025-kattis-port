@@ -49,6 +49,7 @@ TOTAL_SCORE=0
 HAS_ERROR=0
 TC_INDEX=1
 
+
 declare -A programs
 declare -A cases
 declare -A latestdir
@@ -56,21 +57,21 @@ declare -A nicenames
 declare -A groups
 declare -a cleanup
 
-_get_ext() {
+_get_ext () {
   echo "$1" | rev | cut -d. -f1 | rev
 }
 
-_base() {
+_base () {
   ext=$(_get_ext "$1")
   echo $(basename "$1" .$ext)
 }
 
-_error() {
+_error () {
   echo -e "${RED}ERROR: $1${NOCOL}" >&2
   HAS_ERROR=1
 }
 
-_assert_scoring() {
+_assert_scoring () {
   if [[ $USE_SCORING != 1 ]]; then
     _error "Do not call $1 for non-scoring generators"
     exit 1
@@ -79,12 +80,12 @@ _assert_scoring() {
 
 # Add a program to the list of programs
 # Arguments: name execution_command
-add_program() {
+add_program () {
   programs[$1]="$2"
 }
 
 # Mark a file as needing to be removed when the generator finishes.
-add_cleanup() {
+add_cleanup () {
   cleanup+=("$1")
 }
 
@@ -95,7 +96,7 @@ add_program cat "bash -c cat<\$0"
 
 # Compile a C++ program to run.
 # Arguments: file opts
-compile_cpp() {
+compile_cpp () {
   echo Compiling $1...
   if [[ $2 == *"opt"* || "$(uname -s)" != Linux* ]]; then
     g++ -O2 -Wall -std=gnu++20 -DGENERATING_TEST_DATA -o $(_base $1) $1
@@ -108,9 +109,10 @@ compile_cpp() {
 
 # Compile a Java program to run.
 # Arguments: file
-compile_java() {
+compile_java () {
   javac $1
-  if ! [ $(pwd) -ef $(dirname $1) ]; then # unless $(dirname $1) is the same dir as $(pwd)
+  if ! [ $(pwd) -ef $(dirname $1) ] # unless $(dirname $1) is the same dir as $(pwd)
+  then
     cp $(dirname $1)/*.class .
   fi
   add_program $(_base $1) "java $(_base $1)"
@@ -119,7 +121,7 @@ compile_java() {
 
 # Compile a Python program to run.
 # Arguments: file opts
-compile_py() {
+compile_py () {
   if [[ $2 == *"cpython3"* ]]; then
     add_program $(_base $1) "python3 $1"
   elif [[ $2 == *"cpython2"* ]]; then
@@ -133,21 +135,25 @@ compile_py() {
 
 # Compile a bash program to run.
 # Arguments: file
-compile_sh() {
+compile_sh () {
   add_program $(_base $1) "bash $1"
 }
 
 # Compile a program
 # Arguments: file opts
-compile() {
+compile () {
   ext=$(_get_ext $1)
-  if [ $ext == "java" ]; then
+  if [ $ext == "java" ]
+  then 
     compile_java $1
-  elif [ $ext == "cpp" -o $ext == "cc" ]; then
+  elif [ $ext == "cpp" -o $ext == "cc" ]
+  then
     compile_cpp $1 $2
-  elif [ $ext == "py" ]; then
+  elif [ $ext == "py" ]
+  then
     compile_py $1 $2
-  elif [ $ext == "sh" ]; then
+  elif [ $ext == "sh" ]
+  then
     compile_sh $1 $2
   else
     echo "Unsupported program: $1"
@@ -159,17 +165,17 @@ _update_scores() {
   _assert_scoring "_update_scores"
   echo "on_reject: continue
 range: 0 $TOTAL_SCORE
-grader_flags: first_error accept_if_any_accepted" >secret/testdata.yaml
+grader_flags: first_error accept_if_any_accepted" > secret/testdata.yaml
   echo "on_reject: continue
 range: 0 $TOTAL_SCORE
-grader_flags: ignore_sample" >testdata.yaml
+grader_flags: ignore_sample" > testdata.yaml
 }
 
 # Solve a test case using the solution
 # Arguments: testcase path
-solve() {
+solve () {
   local execmd=${programs[$SOLUTION]}
-  $execmd <$1.in >$1.ans
+  $execmd < $1.in > $1.ans
 }
 
 CURGROUP_NAME=.
@@ -178,15 +184,16 @@ CURTEST=
 
 # Use a certain solution as the reference solution
 # Arguments: solution name
-use_solution() {
+use_solution () {
   path=$SOLUTION_BASE/$1
   SOLUTION=$(_base $path)
   compile $path $2
 }
 
+
 # Add the sample group:
 # Arguments: none
-samplegroup() {
+samplegroup () {
   _assert_scoring samplegroup
   echo "Sample group"
   CURGROUP_DIR=sample
@@ -194,7 +201,7 @@ samplegroup() {
 
 # Add a sample testcase
 # Arguments: testcasename
-sample() {
+sample () {
   local name="$1"
   local path="sample/$1"
   if [[ ${cases[$name]} != "" ]]; then
@@ -212,7 +219,7 @@ sample() {
 
 # Add a sample testcase, with manual .ans file
 # Arguments: testcasename
-sample_manual() {
+sample_manual () {
   local name="$1"
   local path="sample/$1"
   if [[ ${cases[$name]} != "" ]]; then
@@ -234,11 +241,11 @@ sample_manual() {
 }
 
 # Arguments: testgroupname score
-group() {
+group () {
   _assert_scoring group
   CURGROUP_NAME="$1"
   CURGROUP_DIR="secret/$1"
-  echo
+  echo 
   echo -e "Group $CURGROUP_NAME"
   mkdir "$CURGROUP_DIR"
   groups[$1]=""
@@ -247,29 +254,29 @@ group() {
   echo "on_reject: break
 accept_score: $score
 range: 0 $score
-grader_flags: min" >"$CURGROUP_DIR/testdata.yaml"
+grader_flags: min" > "$CURGROUP_DIR/testdata.yaml"
   TOTAL_SCORE=$((TOTAL_SCORE + score))
   _update_scores
 }
 
 # Arguments: parameters sent to input validator
-limits() {
+limits () {
   if [[ $USE_SCORING == 1 ]]; then
-    echo "input_validator_flags: $@" >>"$CURGROUP_DIR/testdata.yaml"
+    echo "input_validator_flags: $@" >> "$CURGROUP_DIR/testdata.yaml"
   else
-    echo "input_validator_flags: $@" >>testdata.yaml
+    echo "input_validator_flags: $@" >> testdata.yaml
   fi
 }
 
-output_validator_flags() {
+output_validator_flags () {
   if [[ $USE_SCORING == 1 ]]; then
-    echo "output_validator_flags: $@" >>"$CURGROUP_DIR/testdata.yaml"
+    echo "output_validator_flags: $@" >> "$CURGROUP_DIR/testdata.yaml"
   else
-    echo "output_validator_flags: $@" >>testdata.yaml
+    echo "output_validator_flags: $@" >> testdata.yaml
   fi
 }
 
-_check_missing_samples() {
+_check_missing_samples () {
   for INF in sample/*.in; do
     local name=$(basename "$INF" .in)
     if [[ "$name" != '*' && ${cases[$name]} != sample* ]]; then
@@ -290,7 +297,7 @@ _check_missing_samples() {
   fi
 }
 
-_do_tc() {
+_do_tc () {
   local nicename="$1"
   local name="$2"
   local path="$3"
@@ -299,24 +306,24 @@ _do_tc() {
   # to decimal (range 0-16777215), to make things more deterministic.
   seed=$((16#$(echo -n "$name" | md5sum | head -c 6)))
   echo "Generating case $nicename..."
-  $execmd "${@:5}" $seed >"$path.in"
+  $execmd "${@:5}" $seed > "$path.in"
 
   echo "Solving case $nicename..."
   solve "$path"
 }
 
-hint() {
-  if [[ $# == 1 ]]; then
-    local hinttext=$1
-    echo "$hinttext" >"$CURTEST.hint"
-  fi
+hint () {
+    if [[ $# == 1 ]]; then
+        local hinttext=$1
+        echo "$hinttext" > "$CURTEST.hint"
+    fi
 }
 
-desc() {
-  if [[ $# == 1 ]]; then
-    local desctext=$1
-    echo "$desctext" >"$CURTEST.desc"
-  fi
+desc () {
+    if [[ $# == 1 ]]; then
+        local desctext=$1
+        echo "$desctext" > "$CURTEST.desc"
+    fi
 }
 
 _handle_err() {
@@ -327,14 +334,14 @@ _handle_err() {
   exit 1
 }
 
-_par_tc() {
+_par_tc () {
   set -E
   trap "_handle_err $1" ERR
   _do_tc "$@"
 }
 
 # Arguments: testcasename generator arguments...
-tc() {
+tc () {
   local name="$1"
   if [[ $USE_SCORING == 1 && "$CURGROUP_NAME" == '.' ]]; then
     _error "test case \"$name\" must be within a test group"
@@ -348,9 +355,9 @@ tc() {
         echo "Skipping duplicate case ${nicenames[$name]}"
       else
         if [[ $USE_SCORING = 0 ]]; then
-          LN="ln -s ../" # one lower level of nesting for non-scoring
+            LN="ln -s ../" # one lower level of nesting for non-scoring
         else
-          LN="ln -s ../../" # ln -sr isn't supported on Mac
+            LN="ln -s ../../" # ln -sr isn't supported on Mac
         fi
         if [[ $USE_SYMLINKS = 0 ]]; then
           wait
@@ -361,9 +368,9 @@ tc() {
         ${LN}${cases[$name]}.in "$path.in"
         ${LN}${cases[$name]}.ans "$path.ans"
         for ext in {hint,desc}; do
-          if [ -f ${cases[$name]}.$ext ]; then
-            ${LN}${cases[$name]}.$ext "$path.$ext"
-          fi
+            if [ -f ${cases[$name]}.$ext ]; then
+                ${LN}${cases[$name]}.$ext "$path.$ext"
+            fi
         done
         latestdir[$name]="$CURGROUP_DIR"
         groups[$CURGROUP_NAME]="${groups[$CURGROUP_NAME]} $name"
@@ -411,10 +418,10 @@ tc() {
 }
 
 # Arguments: ../manual-tests/testcasename.in
-tc_manual() {
+tc_manual () {
   local name="$2"
   if [[ $# == 1 ]]; then
-    name=$(_base "$1")
+      name=$(_base "$1")
   fi
   tc $(_base "$1") cat "$1"
 }
@@ -428,20 +435,27 @@ tg_manual() {
     return 0
   fi
 
-  find "$dir" -mindepth 1 -maxdepth 1 \( ! -type f -o ! -name "*.in" \) -print0 | { IFS= read -r -d $'\0' file || [[ $? == 1 ]]; }
-  if [[ -n "$file" ]]; then
-    _error "File / directory \"$file\" in \"$dir\" is not a \".in\" file."
+  local invalid
+  invalid=$(find "$dir" -mindepth 1 -maxdepth 1 -type f ! -name "*.in" -print -quit)
+  if [[ -n "$invalid" ]]; then
+    _error "File \"$invalid\" in \"$dir\" is not a \".in\" file."
     return 0
   fi
 
-  while IFS= read -r -d $'\0' infile; do
+  local infiles=("$dir"/*.in)
+  if [[ ! -e "${infiles[0]}" ]]; then
+    _error "No .in files found in \"$dir\"."
+    return 0
+  fi
+
+  for infile in "${infiles[@]}"; do
     tc_manual "$infile"
-  done < <(find "$dir" -name "*.in" -type f -print0)
+  done
 }
 
 # Include all testcases in another group
 # Arguments: group name to include
-include_group() {
+include_group () {
   _assert_scoring include_group
   for g in "$@"; do
     local any=0
@@ -456,20 +470,20 @@ include_group() {
 }
 
 # Initialization and cleanup code, automatically included.
-_setup_dirs() {
+_setup_dirs () {
   rm -rf secret
   mkdir -p sample secret
   if [[ $USE_SCORING == 1 ]]; then
     echo "on_reject: continue
 range: 0 0
 accept_score: 0
-grader_flags: first_error" >sample/testdata.yaml
+grader_flags: first_error" > sample/testdata.yaml
     _update_scores
   fi
 }
 _setup_dirs
 
-_cleanup_programs() {
+_cleanup_programs () {
   wait
   for x in "${cleanup[@]}"; do
     rm -f "$x"
